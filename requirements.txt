@@ -1,0 +1,6 @@
+kivy[base]
+numpy
+opencv-python
+jsonlines
+openai
+git+https://github.com/neuroevolution-ai/NaturalNets.git
