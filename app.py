@@ -6,7 +6,7 @@ import os
 from naturalnets.environments.i_environment import get_environment_class
 from naturalnets.tools.utils import rescale_values
 from kivy.graphics.texture import Texture
-from tools.converter import convert_to_prompt, predict
+from tools.converter import Predictor
 from kivy.config import Config
 from datetime import datetime
 
@@ -52,6 +52,21 @@ class MainLayout(BoxLayout):
 
         self.render_app()
 
+        self.predictor = Predictor(
+            model_name="EleutherAI/gpt-neo-1.3B",
+            use_openai=False,
+            max_new_tokens=2,
+            temperature=0.1
+        )
+
+        # OpenAI example
+        # self.predictor = Predictor(
+        #     model_name="text-davinci-003",
+        #     use_openai=True,
+        #     max_new_tokens=3,
+        #     temperature=0.0
+        # )
+
     def render_app(self):
         screen_size = self.app.get_screen_size()
         image = self.app.render_image()
@@ -93,8 +108,9 @@ class MainLayout(BoxLayout):
 
         while True:
             observation = self.app.get_observation_dict()
-            prompt = convert_to_prompt(task, observation)
-            button = int(predict(prompt))
+            prompt = self.predictor.convert_to_prompt(task, observation)
+            button = self.predictor.predict(prompt)
+
             print(button)
 
             if button in allowed_actions:
