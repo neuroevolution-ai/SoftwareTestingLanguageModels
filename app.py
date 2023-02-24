@@ -52,11 +52,23 @@ class MainLayout(BoxLayout):
 
         self.render_app()
 
+        # self.predictor = Predictor(
+        #     model_name="EleutherAI/gpt-neo-1.3B",
+        #     use_openai=False,
+        #     max_new_tokens=3,
+        #     num_return_sequences=3,
+        #     temperature=0.0,
+        #     do_sample=False
+        # )
+
+        # HuggingFace instructional LM
         self.predictor = Predictor(
-            model_name="EleutherAI/gpt-neo-1.3B",
+            model_name="google/flan-t5-base",
             use_openai=False,
-            max_new_tokens=2,
-            temperature=0.1
+            max_new_tokens=3,
+            num_return_sequences=3,
+            temperature=0.5,
+            do_sample=False
         )
 
         # OpenAI example
@@ -64,7 +76,9 @@ class MainLayout(BoxLayout):
         #     model_name="text-davinci-003",
         #     use_openai=True,
         #     max_new_tokens=3,
-        #     temperature=0.0
+        #     num_return_sequences=1,
+        #     temperature=0.0,
+        #     do_sample=False
         # )
 
     def render_app(self):
@@ -108,14 +122,19 @@ class MainLayout(BoxLayout):
 
         while True:
             observation = self.app.get_observation_dict()
-            prompt = self.predictor.convert_to_prompt(task, observation)
-            button = self.predictor.predict(prompt)
+            possible_buttons = self.predictor.predict(task, observation)
 
-            print(button)
+            debug_output = f"Possible buttons: {possible_buttons}. Selected: "
 
-            if button in allowed_actions:
-                self.app.step_widget(button)
-                self.render_app()
+            for button in possible_buttons:
+                if button in allowed_actions and button not in observation["pressed buttons"]:
+                    self.app.step_widget(button)
+                    self.render_app()
+
+                    debug_output += f"{button}"
+                    break
+
+            print(debug_output)
 
             # Take screenshot
             filename = datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + ".png"

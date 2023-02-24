@@ -3,4 +3,6 @@ numpy
 opencv-python
 openai
 transformers
+jupyterlab
+ipywidgets
 git+https://github.com/neuroevolution-ai/NaturalNets.git
