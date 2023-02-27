@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Union, List
 
 import openai
@@ -19,8 +20,9 @@ class Predictor:
         self.do_sample = do_sample
 
         if self.use_openai:
-            with open("tools/openai_key.json", "r") as file:
-                openai.api_key = json.load(file)["key"]
+            if os.getenv("OPENAI_API_KEY") is None:
+                with open("tools/openai_key.json", "r") as file:
+                    openai.api_key = json.load(file)["key"]
         else:
             if self.do_sample and temperature == 0:
                 raise RuntimeError(f"A temperature of 0 is only supported with OpenAI or if do_sample=False, try "
