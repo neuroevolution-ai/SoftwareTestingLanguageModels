@@ -122,7 +122,8 @@ class MainLayout(BoxLayout):
 
         while True:
             observation = self.app.get_observation_dict()
-            possible_buttons = self.predictor.predict(task, observation)
+            prompt = self.predictor.convert_to_prompt(pressed_buttons, meta_info_id=0)
+            possible_buttons = self.predictor.predict(prompt)
 
             debug_output = f"Possible buttons: {possible_buttons}. Selected: "
 

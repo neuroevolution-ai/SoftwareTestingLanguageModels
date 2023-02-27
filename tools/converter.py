@@ -4,7 +4,7 @@ from typing import Union, List
 import openai
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
 
-SEQ2SEQ_MODELS = ["google/flan-t5-base"]
+SEQ2SEQ_MODELS = ["google/flan-t5-base", "allenai/tk-instruct-3b-def"]
 
 
 class Predictor:
@@ -46,28 +46,28 @@ class Predictor:
             print("Loading complete")
 
     @staticmethod
-    def convert_to_prompt(task, pressed_buttons):
-        # meta_info = ("Your task is to execute specific commands by interacting with the GUI of a software application. "
-        #              "Your response must only contain a single number between 0 (including) and 24 (also including), "
-        #              "since the application consists of exactly 25 numbered buttons in total and your response "
-        #              "indicates which corresponding button to click. The State shows which buttons have already been "
-        #              "pressed and each button can only be clicked once. This is the command: ")
-        #
-        # # TODO 0-24 actions specific to dummyapp -> must be generalized
-        # prompt = f"{meta_info} {task} State: {pressed_buttons} Possible Actions: 0 to 24 Your Action:"
+    def convert_to_prompt(state, meta_info_id: int):
+        # TODO 0-24 actions specific to dummyapp -> must be generalized
+        if meta_info_id == 0:
+            meta_info = (
+                "Your task is to execute specific commands by interacting with the GUI of a software application. "
+                "Your response must only contain a single number between 0 (including) and 24 (also including), "
+                "since the application consists of exactly 25 numbered buttons in total and your response "
+                "indicates which corresponding button to click. The State shows which buttons have already been "
+                "pressed and each button can only be clicked once. This is the State:"
+            )
+        else:
+            meta_info = (
+                "Your task is to select an integer between 0 and 24, which is not present in the following list:"
+            )
 
-        # prompt = ("This is a list of already clicked buttons numbered from 0 and 24: "
-        #           f"{pressed_buttons['pressed buttons']}. Guess the number of a remaining unclicked button by "
-        #           "specifying a single integer between 0 and 24:")
+            state = state["pressed buttons"]
 
-        prompt = ("Your task is to select an integer between 0 and 24, which is not present in the following list "
-                  f"{pressed_buttons['pressed buttons']}:")
+        prompt = f"{meta_info} {state} Possible Actions: 0 to 24 Your Action:"
 
         return prompt
 
-    def predict(self, task, pressed_buttons) -> List[Union[int, str]]:
-        prompt = self.convert_to_prompt(task, pressed_buttons)
-
+    def predict(self, prompt) -> List[Union[int, str]]:
         if self.use_openai:
             prediction = openai.Completion.create(
                 model=self.model_name,
