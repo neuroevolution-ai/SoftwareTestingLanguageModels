@@ -1,14 +1,16 @@
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-import numpy as np
-import cv2
 import os
+from datetime import datetime
+
+import cv2
+import numpy as np
+from kivy.app import App
+from kivy.config import Config
+from kivy.graphics.texture import Texture
+from kivy.uix.boxlayout import BoxLayout
 from naturalnets.environments.i_environment import get_environment_class
 from naturalnets.tools.utils import rescale_values
-from kivy.graphics.texture import Texture
-from tools.converter import Predictor
-from kivy.config import Config
-from datetime import datetime
+
+from predictors.predictor import Predictor
 
 Config.set('graphics', 'width', '400')
 Config.set('graphics', 'height', '440')

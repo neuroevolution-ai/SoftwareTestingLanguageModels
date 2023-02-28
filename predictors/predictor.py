@@ -1,17 +1,20 @@
+import abc
 import json
 import os
-from typing import Union, List
+from typing import Union, List, Dict
 
 import openai
+from loguru import logger
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
 
 SEQ2SEQ_MODELS = ["google/flan-t5-base", "allenai/tk-instruct-3b-def"]
 
 
-class Predictor:
+class Predictor(abc.ABC):
 
-    def __init__(self, model_name: str, use_openai: bool, max_new_tokens: int, num_return_sequences: int,
+    def __init__(self, env_config: dict, model_name: str, use_openai: bool, max_new_tokens: int, num_return_sequences: int,
                  temperature: float, do_sample: bool):
+        self.env_config = env_config
         self.model_name = model_name
         self.use_openai = use_openai
         self.max_new_tokens = max_new_tokens
@@ -30,7 +33,7 @@ class Predictor:
 
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
-            print("Loading HuggingFace model...")
+            logger.info("Loading HuggingFace model...")
 
             # Some models use the text generation task, other the text2text task. For the latter, the seq2seq model
             # class is needed, for the former the causal LM class
@@ -45,29 +48,34 @@ class Predictor:
                     pad_token_id=self.tokenizer.eos_token_id
                 )
 
-            print("Loading complete")
+            logger.info("Loading complete")
 
-    @staticmethod
-    def convert_to_prompt(state, meta_info_id: int):
-        # TODO 0-24 actions specific to dummyapp -> must be generalized
-        if meta_info_id == 0:
-            meta_info = (
-                "Your task is to execute specific commands by interacting with the GUI of a software application. "
-                "Your response must only contain a single number between 0 (including) and 24 (also including), "
-                "since the application consists of exactly 25 numbered buttons in total and your response "
-                "indicates which corresponding button to click. The State shows which buttons have already been "
-                "pressed and each button can only be clicked once. This is the State:"
-            )
-        else:
-            meta_info = (
-                "Your task is to select an integer between 0 and 24, which is not present in the following list:"
-            )
+        self.current_prompt_id = 0
+        self.current_prompt_template = self.prompt_templates[self.current_prompt_id]
 
-            state = state["pressed buttons"]
+    @property
+    @abc.abstractmethod
+    def prompt_templates(self) -> Dict[int, str]:
+        pass
 
-        prompt = f"{meta_info} {state} Possible Actions: 0 to 24 Your Action:"
+    def set_prompt_template(self, prompt_template_id: int):
+        try:
+            self.current_prompt_template = self.prompt_templates[prompt_template_id]
+        except KeyError:
+            logger.error(f"There is no prompt with ID {prompt_template_id}")
 
-        return prompt
+    def get_prompt_templates(self) -> Dict[int, str]:
+        return self.prompt_templates
+
+    def convert_to_prompt(self, state) -> str:
+        """
+        Default method to create the prompt from the current state. Can be overwritten in subclass for
+        prompts specific to a certain app.
+
+        :param state: The current state of the app
+        :return: The prompt for the LM as a string
+        """
+        return f"{self.current_prompt_template} {state}"
 
     def predict(self, prompt) -> List[Union[int, str]]:
         if self.use_openai:
