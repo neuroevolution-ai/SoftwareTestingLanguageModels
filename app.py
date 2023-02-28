@@ -10,32 +10,28 @@ from kivy.uix.boxlayout import BoxLayout
 from naturalnets.environments.i_environment import get_environment_class
 from naturalnets.tools.utils import rescale_values
 
-from predictors.predictor import Predictor
+from predictors import DummyAppPredictor
 
 Config.set('graphics', 'width', '400')
 Config.set('graphics', 'height', '440')
 
 config1 = {
-    "environment": {
-        "type": "GUIApp",
-        "number_time_steps": 200,
-        "include_fake_bug": False
-    }
+    "type": "GUIApp",
+    "number_time_steps": 200,
+    "include_fake_bug": False
 }
 
 config2 = {
-    "environment": {
-        "type": "DummyApp",
-        "number_time_steps": 100,
-        "screen_width": 400,
-        "screen_height": 400,
-        "number_button_columns": 5,
-        "number_button_rows": 5,
-        "button_width": 50,
-        "button_height": 30,
-        "fixed_env_seed": False,
-        "force_consecutive_click_order": False
-    }
+    "type": "DummyApp",
+    "number_time_steps": 100,
+    "screen_width": 400,
+    "screen_height": 400,
+    "number_button_columns": 5,
+    "number_button_rows": 5,
+    "button_width": 50,
+    "button_height": 30,
+    "fixed_env_seed": False,
+    "force_consecutive_click_order": False
 }
 
 config = config2
@@ -47,14 +43,20 @@ class MainLayout(BoxLayout):
         super().__init__(**kwargs)
 
         # Get environment class from configuration
-        environment_class = get_environment_class(
-            config["environment"]["type"])
-        self.app = environment_class(config["environment"])
+        environment_class = get_environment_class(config["type"])
+        self.app = environment_class(config)
         self.app.reset()
 
         self.render_app()
 
-        # self.predictor = Predictor(
+        predictor_class = DummyAppPredictor
+
+        if config["type"] == "GUIApp":
+            # predictor_class = GUIAppPredictor
+            raise RuntimeError(f"This currently only works with the DummyApp")
+
+        # self.predictor = predictor_class(
+        #     env_config=config,
         #     model_name="EleutherAI/gpt-neo-1.3B",
         #     use_openai=False,
         #     max_new_tokens=3,
@@ -64,7 +66,8 @@ class MainLayout(BoxLayout):
         # )
 
         # HuggingFace instructional LM
-        self.predictor = Predictor(
+        self.predictor = predictor_class(
+            env_config=config,
             model_name="google/flan-t5-base",
             use_openai=False,
             max_new_tokens=3,
@@ -74,7 +77,8 @@ class MainLayout(BoxLayout):
         )
 
         # OpenAI example
-        # self.predictor = Predictor(
+        # self.predictor = predictor_class(
+        #     env_config=config,
         #     model_name="text-davinci-003",
         #     use_openai=True,
         #     max_new_tokens=3,
@@ -96,15 +100,14 @@ class MainLayout(BoxLayout):
 
     def touch_down(self, image, touch):
         if image.collide_point(touch.x, touch.y):
-
             # Absolute kivy coordinates
             image_position_abs = np.array([image.pos[0], image.pos[1]])
-            touch_position_abs = np.array([touch.x, image.height-touch.y])
+            touch_position_abs = np.array([touch.x, image.height - touch.y])
 
             # Relative widget coordinates
-            center = np.array([image.width, image.height])/2
+            center = np.array([image.width, image.height]) / 2
             touch_position = touch_position_abs + image_position_abs
-            screen_origin = center - self.app.get_screen_size()/2
+            screen_origin = center - self.app.get_screen_size() / 2
             current_action = touch_position - screen_origin
 
             observation = self.app.get_observation_dict()
@@ -124,13 +127,13 @@ class MainLayout(BoxLayout):
 
         while True:
             observation = self.app.get_observation_dict()
-            prompt = self.predictor.convert_to_prompt(pressed_buttons, meta_info_id=0)
+            prompt = self.predictor.convert_to_prompt(observation)
             possible_buttons = self.predictor.predict(prompt)
 
             debug_output = f"Possible buttons: {possible_buttons}. Selected: "
 
             for button in possible_buttons:
-                if button in allowed_actions and button not in observation["pressed buttons"]:
+                if button in allowed_actions and button not in observation["pressed_buttons"]:
                     self.app.step_widget(button)
                     self.render_app()
 
